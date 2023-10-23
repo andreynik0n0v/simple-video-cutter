@@ -34,60 +34,85 @@ namespace SimpleVideoCutter
             await DownloadLastestFFmpegVersion();
         }
 
-        public async Task DownloadLastestFFmpegVersion()
+public async Task<bool> DownloadLastestFFmpegVersion()
+{
+    try
+    {
+        var downloadSucceeded = await DownloadFFmpegFile();
+        if (downloadSucceeded)
         {
-            var url = $"https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
-            var filename = "ffmpeg-latest-static.zip";
-            var folderName = $"ffmpeg.{DateTime.Now:yyyyMMddHHmmss}";
+            var extractionSucceeded = ExtractFFmpegFile();
+            if (extractionSucceeded)
+            {
+                UpdateFFmpegPath();
+                labelDownloadSuccessful.Visible = true;
+                VideoCutterSettings.Instance.StoreSettings();
+                return true;
+            }
+        }
+    }
+    catch (Exception)
+    {
+        labelError.Visible = true; 
+    }
 
+    return false; // Возвращаем false, если операция завершилась неудачно
+}
 
-            stopDownloadRequest = false;
-            labelError.Visible = false;
-            progressBarDownload.Value = 0;
-            progressBarDownload.Visible = true;
-            buttonClose.Text = GlobalStrings.GlobalCancel;
+    private async Task<bool> DownloadFFmpegFile()
+    {
+        var url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
+        var filename = "ffmpeg-latest-static.zip";
 
+        stopDownloadRequest = false;
+        labelError.Visible = false;
+        progressBarDownload.Value = 0;
+        progressBarDownload.Visible = true;
+        buttonClose.Text = GlobalStrings.GlobalCancel;
+
+        using (var client = new CustomWebClient { TimeoutMs = 10000 })
+        {
             try
             {
-                using (var client = new CustomWebClient { TimeoutMs = 10000 })
-                {
-                    client.DownloadProgressChanged += (object sender, DownloadProgressChangedEventArgs e) =>
-                    {
-                        progressBarDownload.Value = e.ProgressPercentage;
-                        if (stopDownloadRequest)
-                        {
-                            client.CancelAsync();
-                        }
-                    };
-                    client.DownloadFileCompleted += (object sender, AsyncCompletedEventArgs e) =>
-                    {
-                        if (!e.Cancelled && e.Error == null)
-                        {
-                            ZipFile.ExtractToDirectory(filename, folderName);
-                            var dir = Directory.GetDirectories(folderName).FirstOrDefault();
-                            if (dir != null)
-                            {
-                                VideoCutterSettings.Instance.FFmpegPath =
-                                    Path.Combine(Path.GetFullPath(dir), "bin", "ffmpeg.exe");
-                                labelDownloadSuccessful.Visible = true;
-                                VideoCutterSettings.Instance.StoreSettings();
-                            }
-
-                        }
-                    };
-
-                    var uri = new Uri(url);
-                    await client.DownloadFileTaskAsync(uri, filename);
-
-                }
-            } 
-            catch (Exception)
-            {
-                labelError.Visible = true; 
+                var uri = new Uri(url);
+                await client.DownloadFileTaskAsync(uri, filename);
+                return !client.IsBusy && !client.Cancelled && client.Error == null;
             }
-            progressBarDownload.Visible = false;
-            buttonClose.Text = GlobalStrings.GlobalClose;
+            finally
+            {
+                progressBarDownload.Visible = false;
+                buttonClose.Text = GlobalStrings.GlobalClose;
+            }
         }
+    }
+
+    private bool ExtractFFmpegFile()
+    {
+        var filename = "ffmpeg-latest-static.zip";
+        var folderName = $"ffmpeg.{DateTime.Now:yyyyMMddHHmmss}";
+
+        try
+        {
+            ZipFile.ExtractToDirectory(filename, folderName);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void UpdateFFmpegPath()
+    {
+        var folderName = $"ffmpeg.{DateTime.Now:yyyyMMddHHmmss}";
+        var dir = Directory.GetDirectories(folderName).FirstOrDefault();
+        if (dir != null)
+        {
+            VideoCutterSettings.Instance.FFmpegPath =
+                Path.Combine(Path.GetFullPath(dir), "bin", "ffmpeg.exe");
+        }
+    }
+
 
         private void buttonClose_Click(object sender, EventArgs e)
         {
@@ -102,3 +127,37 @@ namespace SimpleVideoCutter
         }
     }
 }
+
+
+
+namespace SimpleVideoCutter
+{
+    public partial class FormFFmpegMissingDialog : Form
+    {
+        private FFmpegDownloader ffmpegDownloader;
+
+        public FormFFmpegMissingDialog()
+        {
+            InitializeComponent();
+            ffmpegDownloader = new FFmpegDownloader();
+        }
+
+        private void buttonDownload_Click(object sender, EventArgs e)
+        {
+            bool downloadSuccess = ffmpegDownloader.DownloadLatestVersion();
+
+            if (downloadSuccess)
+            {
+                // Обработка успешной загрузки
+            }
+            else
+            {
+                // Обработка неудачной загрузки
+            }
+        }
+    }
+
+}
+
+
+

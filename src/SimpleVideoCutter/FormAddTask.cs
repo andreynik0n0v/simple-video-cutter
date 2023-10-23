@@ -10,7 +10,6 @@ namespace SimpleVideoCutter
         private FFmpegTask task;
         private bool selectionsOnKeyFrames = false;
 
-
         public FormAddTask(FFmpegTask task, bool selectionsOnKeyFrames)
         {
             InitializeComponent();
@@ -22,6 +21,10 @@ namespace SimpleVideoCutter
         }
 
         public FFmpegTask Task { get => task; set => task = value; }
+
+        private const string OriginalFilePathLabel = "Original File Path:";
+        private const string OutputFilePathLabel = "Output File Path:";
+        private const string DurationLabel = "Duration:";
 
         private void TaskToGUI()
         {
@@ -35,9 +38,9 @@ namespace SimpleVideoCutter
             finally
             {
             }
-
         }
 
+        
         private void UpdatePossibilities()
         {
             var losslessCutPossible = selectionsOnKeyFrames; 
@@ -64,12 +67,23 @@ namespace SimpleVideoCutter
             public string Title { get; set; }
             public string Value { get; set; }
 
+            public ComboBoxItem(string title, string value)
+            {
+                Title = title;
+                Value = value;
+            }
+
+            public bool Equals(ComboBoxItem other)
+            {
+                return String.Equals(Value, other.Value);
+            }
+
             public override bool Equals(object obj)
             {
                 if (obj is ComboBoxItem)
                 {
                     var other = obj as ComboBoxItem;
-                    return String.Equals(Value, other.Value);
+                    return Equals(other);
                 }
                 else
                     return false;
@@ -81,19 +95,31 @@ namespace SimpleVideoCutter
             }
         }
 
+
         private void richTextBoxExplanation_LinkClicked(object sender, LinkClickedEventArgs e)
         {
             System.Diagnostics.Process.Start(e.LinkText);
         }
-
-        private void buttonEnqueueLoseless_Click(object sender, EventArgs e)
+        private void HandleLosslessButtonClick()
         {
             Task.Lossless = true;
         }
 
-        private void buttonEnqueueReEncoding_Click(object sender, EventArgs e)
+        private void HandleReEncodingButtonClick()
         {
             Task.Lossless = false;
         }
+
+        private void buttonEnqueueLoseless_Click(object sender, EventArgs e)
+        {
+            HandleLosslessButtonClick();
+        }
+
+        private void buttonEnqueueReEncoding_Click(object sender, EventArgs e)
+        {
+            HandleReEncodingButtonClick();
+        }
+
+        
     }
 }
